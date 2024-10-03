@@ -31,26 +31,26 @@ class FLServer:
             print(f"[Server] Client connected from {address}")
 
             try:
-                # 1. Send the global model to the client
+                
                 print("[Server] Sending global model to client...")
                 serialized_model = pickle.dumps(self.global_model.state_dict())
                 client_socket.sendall(serialized_model)
                 print("[Server] Global model sent to client.")
 
-                # 2. Receive client's model
+               
                 print("[Server] Waiting to receive updated model from client...")
-                received_data = client_socket.recv(409600)  # Adjust buffer size if needed
+                received_data = client_socket.recv(409600) 
                 client_model = pickle.loads(received_data)
                 print("[Server] Model received from client.")
 
-                # Log received model parameters
+              s
                 print("[Server] Received model parameters:")
                 print(client_model)
 
-                # 3. Perform federated averaging (for simplicity, using the client's model as the global model)
+                
                 self.global_model.load_state_dict(client_model)
 
-                # 4. Optionally, send the updated global model back to the client
+               
                 print("[Server] Sending updated global model back to client...")
                 client_socket.sendall(pickle.dumps(self.global_model.state_dict()))
                 print("[Server] Updated global model sent.")
