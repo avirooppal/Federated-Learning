@@ -5,19 +5,19 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
 import numpy as np
 
-# Define the neural network model
+# neural network model
 class SimpleNN(nn.Module):
     def __init__(self):
         super(SimpleNN, self).__init__()
-        self.fc1 = nn.Linear(784, 128)  # Input layer to hidden layer
-        self.fc2 = nn.Linear(128, 10)    # Hidden layer to output layer
+        self.fc1 = nn.Linear(784, 128)  
+        self.fc2 = nn.Linear(128, 10)    
 
     def forward(self, x):
-        x = torch.relu(self.fc1(x))       # Activation function for hidden layer
-        x = self.fc2(x)                    # Output layer
+        x = torch.relu(self.fc1(x))      
+        x = self.fc2(x)                   
         return x
 
-# Define the client class
+# client class
 class Client:
     def __init__(self, model, optimizer, criterion, data_loader):
         self.model = model
@@ -35,13 +35,13 @@ class Client:
                 loss = self.criterion(output, target)
                 loss.backward()
                 self.optimizer.step()
-                total_loss += loss.item()  # Accumulate the loss
-        return total_loss / len(self.data_loader)  # Return average loss for the epoch
+                total_loss += loss.item() 
+        return total_loss / len(self.data_loader)  
 
     def get_weights(self):
         return {name: param.data.clone() for name, param in self.model.named_parameters()}
 
-# Define the server class
+
 class Server:
     def __init__(self, model, threshold):
         self.global_model = model
@@ -57,30 +57,30 @@ class Server:
         total_diff = 0
         for key in old_weights.keys():
             total_diff += torch.sum(torch.abs(old_weights[key] - new_weights[key])).item()
-        print(f"Total difference: {total_diff}")  # Debugging info
+        print(f"Total difference: {total_diff}")  
         return total_diff < self.threshold
 
-# Main function to simulate federated learning
+
 def main():
-    # Initialize the model and other parameters
+   
     global_model = SimpleNN()
     criterion = nn.CrossEntropyLoss()
-    threshold = 0.01  # Define a convergence threshold
+    threshold = 0.01  
     num_clients = 3
-    rounds = 10  # Maximum number of rounds
+    rounds = 10  
 
-    # Load MNIST dataset
+   
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
     dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
 
-    # Create DataLoaders for each client using subsets of the dataset
+   
     client_data_loaders = []
     data_size = len(dataset)
     indices = np.arange(data_size)
     np.random.shuffle(indices)
     
     for i in range(num_clients):
-        client_indices = indices[i::num_clients]  # Create subsets for each client
+        client_indices = indices[i::num_clients] 
         client_subset = Subset(dataset, client_indices)
         client_data_loader = DataLoader(client_subset, batch_size=32, shuffle=True)
         
@@ -90,25 +90,24 @@ def main():
 
     server = Server(global_model, threshold)
 
-    # Training loop
+    
     for round in range(rounds):
         print(f"\nRound {round + 1}")
         client_weights = []
         old_weights = {name: param.data.clone() for name, param in global_model.named_parameters()}  # Clone current weights
 
         for client in client_data_loaders:
-            avg_loss = client.train(epochs=1)  # Train each client for 1 epoch
-            print(f"Client average training loss: {avg_loss:.4f}")  # Print average loss for the client
+            avg_loss = client.train(epochs=1)  
+            print(f"Client average training loss: {avg_loss:.4f}") 
             updated_weights = client.get_weights()
             client_weights.append(updated_weights)
 
         new_weights = server.aggregate_weights(client_weights)
 
-        # Update global model
         for name, param in global_model.named_parameters():
             param.data = new_weights[name]
 
-        # Check for convergence
+       
         if server.check_convergence(old_weights, new_weights):
             print("Convergence reached. Stopping training.")
             break
